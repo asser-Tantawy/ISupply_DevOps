@@ -1,0 +1,5 @@
+set the organization and project 
+run the 
+az login 
+command to ls prs
+az repos pr list --org https://dev.azure.com/milesegyptdt -p iSupply -o table
