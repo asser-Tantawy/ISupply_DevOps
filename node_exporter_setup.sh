@@ -45,3 +45,6 @@ systemctl start node_exporter
 
 echo "Node Exporter is running on port 9100"
 
+echo "set firewall to allow Prometheus to fetch metrics"
+ufw allow 9100 || true
+
