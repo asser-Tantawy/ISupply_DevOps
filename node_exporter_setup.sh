@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-#https://github.com/prometheus/node_exporter/releases/download/v1.9.1/node_exporter-1.9.1.linux-arm64.tar.gz
+	      #https://github.com/prometheus/node_exporter/releases/download/v1.9.1/node_exporter-1.9.1.linux-arm64.tar.gz
 NODE_EXPORTER_VERSION="1.9.1"
 ARCH="arm64"  # For AWS Graviton (aarch64)
 DOWNLOAD_URL="https://github.com/prometheus/node_exporter/releases/download/v${NODE_EXPORTER_VERSION}/node_exporter-${NODE_EXPORTER_VERSION}.linux-${ARCH}.tar.gz"
