@@ -1,0 +1,10 @@
+# playbooks/rx_setup.yml
+# Ensures packages and services required by RX are present and running.
+# Since PHP and Nginx are already installed, this playbook will act as a safety net.
+
+- name: Setup RX servers
+  hosts: all
+  become: true
+  roles:
+    - node_exporter
+

@@ -1,0 +1,25 @@
+# playbook to set logs maximum size
+# author : Asser Tantawy
+# Date : 26/9/2025
+
+- name: Set journald log size limit
+  hosts: all
+  become: true
+  vars:
+    max_log_size: "100M"
+
+  tasks:
+    - name: Ensure journald.conf has SystemMaxUse set
+      lineinfile:
+        path: /etc/systemd/journald.conf
+        regexp: '^SystemMaxUse='
+        line: "SystemMaxUse={{ max_log_size }}"
+        backup: yes
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+
+    - name: Restart systemd-journald
+      systemd:
+        name: systemd-journald
+        state: restarted

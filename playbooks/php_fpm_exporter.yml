@@ -1,0 +1,77 @@
+# playbook to install php exporter on target machine 
+# author : Asser Tantawy
+# Date : 10/9/2025
+- name: Setup PHP-FPM Exporter
+  hosts: all
+  become: true
+  vars:
+    php_fpm_exporter_version: "2.2.0"
+    php_fpm_exporter_port: 9253
+
+  tasks:
+
+    - name: Set architecture variable
+      ansible.builtin.set_fact:
+         php_exporter_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+    - name: Download PHP-FPM Exporter
+      get_url:
+        #https://github.com/hipages/php-fpm_exporter/releases/download/v2.2.0/php-fpm_exporter_2.2.0_linux_amd64
+        url: "https://github.com/hipages/php-fpm_exporter/releases/download/v{{ php_fpm_exporter_version }}/php-fpm_exporter_{{ php_fpm_exporter_version }}_linux_{{ php_exporter_arch }}"
+        dest: /usr/local/bin/php-fpm_exporter
+        mode: '0755'
+
+    - name: Create php_fpm_exporter user
+      user:
+        name: php_fpm_exporter
+        shell: /usr/sbin/nologin
+        system: yes
+        create_home: no
+
+    - name: Set ownership of PHP-FPM Exporter binary
+      file:
+        path: /usr/local/bin/php-fpm_exporter
+        owner: php_fpm_exporter
+        group: php_fpm_exporter
+        mode: '0755'
+    - name: Create php-fpm_exporter config file
+      copy:
+        dest: /etc/php-fpm_exporter/php-fpm_exporter.yml
+        content: |
+          phpfpm:
+            - name: dev
+              url: "http://127.0.0.1/status"
+            - name: stg
+              url: "http://127.0.0.1/status"
+
+          listen:
+            address: ":9253"
+            metrics_path: "/metrics"
+
+    - name: Create php-fpm_exporter systemd service
+      copy:
+        dest: /etc/systemd/system/php-fpm_exporter.service
+        content: |
+          [Unit]
+          Description=PHP-FPM Exporter
+          After=network.target
+
+          [Service]
+          User=php_fpm_exporter
+          Group=php_fpm_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/php-fpm_exporter --config.file=/etc/php-fpm-exporter.yml
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Enable and start php-fpm_exporter
+      systemd:
+        name: php-fpm_exporter
+        enabled: yes
+        state: started
+

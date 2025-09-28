@@ -1,0 +1,13 @@
+# playbooks/check.yml
+# This playbook will gather facts about the servers and print them
+# Think of it as Ansible’s "Hello World"
+#
+
+- name: RX check servers
+  hosts: all
+  gather_facts: yes # collect system info (OS, memory, CPU, etc.)
+  tasks: 
+    - name:
+      debug:
+        msg: "server {{ inventory_hostname }} is running {{ ansible_distribution }} {{ ansible_distribution_version}} "
+

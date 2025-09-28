@@ -1,0 +1,96 @@
+# playbook to install node exporter on target machine 
+# author : Asser Tantawy
+# Date : 20/9/2025
+
+- name: Setup node_exporter 
+  hosts: all
+  become: true
+  vars:
+    node_exporter_version: "1.9.1"
+    node_exporter_port: 9100
+  tasks: 
+    - name: Ensure /resources directory exists
+      file:
+        path: /resources
+        state: directory
+        mode: '0755'
+
+    - name: set architecture variable
+      ansible.builtin.set_fact:
+         node_exporter_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+    - name: Download Node Exporter
+      get_url:
+         url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-{{  node_exporter_arch }}.tar.gz"
+         dest: /resources/node_exporter.tar.gz
+         mode: '0755'
+    - name: Extract exporter 
+      unarchive: 
+          src: /resources/node_exporter.tar.gz
+          dest: /resources/
+          remote_src: yes
+          creates: /resources/node_exporter
+    - name: Move node_exporter binary to /usr/local/bin
+      command: mv /resources/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}/node_exporter /usr/local/bin/node_exporter
+      args:
+        creates: /usr/local/bin/node_exporter
+    - name: Create node_exporter user
+      user:
+        name: node_exporter
+        shell: /usr/sbin/nologin
+        system: yes
+        create_home: no
+    - name: Set ownership of Node Exporter binary
+      file:
+        path: /usr/local/bin/node_exporter
+        owner: node_exporter
+        group: node_exporter
+        mode: '0755'
+    - name: Create node_exporter systemd service
+      copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          Restart=always
+
+          [Install]
+          WantedBy=default.target
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Enable and start node_exporter
+      systemd:
+        name: node_exporter
+        enabled: yes
+        state: started
+    - name: Check if UFW is active
+      command: ufw status
+      register: ufw_status
+      changed_when: false
+    - name: Open firewall for node_exporter
+      ufw:
+        rule: allow
+        from: "178.128.193.121"
+        port: "{{ node_exporter_port }}"
+        proto: tcp
+        state: enabled
+      when: "'Status: active' in ufw_status.stdout"
+    - name: Reload UFW
+      command: ufw reload
+      when: "'Status: active' in ufw_status.stdout"
+
+    - name: Test Node Exporter is responding
+      uri:
+        url: "http://localhost:{{ node_exporter_port }}/metrics"
+        return_content: no
+        status_code: 200
+      register: node_exporter_check
+      failed_when: node_exporter_check.status != 200
